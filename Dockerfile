@@ -21,3 +21,5 @@ RUN pip install -e ./stac_fastapi/types[dev] && \
     pip install -e ./stac_fastapi/extensions[dev] && \
     pip install -e ./stac_fastapi/sqlalchemy[dev,server] && \
     pip install -e ./stac_fastapi/pgstac[dev,server]
+
+CMD ["python", "-m" ,"stac_fastapi.pgstac.app"]
