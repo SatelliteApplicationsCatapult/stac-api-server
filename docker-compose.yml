@@ -1,52 +1,21 @@
 version: '3'
 services:
-  # app-sqlalchemy:
-  #   container_name: stac-fastapi-sqlalchemy
-  #   image: stac-utils/stac-fastapi
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile
-  #   platform: linux/amd64
-  #   environment:
-  #     - APP_HOST=0.0.0.0
-  #     - APP_PORT=8081
-  #     - RELOAD=true
-  #     - ENVIRONMENT=local
-  #     - POSTGRES_USER=username
-  #     - POSTGRES_PASS=password
-  #     - POSTGRES_DBNAME=postgis
-  #     - POSTGRES_HOST_READER=database
-  #     - POSTGRES_HOST_WRITER=database
-  #     - POSTGRES_PORT=5432
-  #     - WEB_CONCURRENCY=10
-  #   ports:
-  #     - "8081:8081"
-  #   volumes:
-  #     - ./stac_fastapi:/app/stac_fastapi
-  #     - ./scripts:/app/scripts
-  #   depends_on:
-  #     - database
-  #   command:
-  #     bash -c "./scripts/wait-for-it.sh database:5432 && python -m stac_fastapi.sqlalchemy.app"
-
   app-pgstac:
     container_name: stac-fastapi-pgstac
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: stac-utils/stac-fastapi
     platform: linux/amd64
     environment:
       - APP_HOST=0.0.0.0
       - APP_PORT=8082
-      - RELOAD=true
-      - ENVIRONMENT=local
+      - RELOAD=false
+      - ENVIRONMENT=Dev
       - POSTGRES_USER=username
       - POSTGRES_PASS=password
       - POSTGRES_DBNAME=postgis
       - POSTGRES_HOST_READER=database
       - POSTGRES_HOST_WRITER=database
       - POSTGRES_PORT=5432
-      - WEB_CONCURRENCY=10
+      - WEB_CONCURRENCY=1
       - VSI_CACHE=TRUE
       - GDAL_HTTP_MERGE_CONSECUTIVE_RANGES=YES
       - GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
@@ -58,24 +27,42 @@ services:
     volumes:
       - ./stac_fastapi:/app/stac_fastapi
       - ./scripts:/app/scripts
-    depends_on:
-      - database
-    command: bash -c "./scripts/wait-for-it.sh database:5432 && python -m stac_fastapi.pgstac.app"
+    # command:
+    #   bash -c "./scripts/wait-for-it.sh database:5432 && python -m stac_fastapi.pgstac.app"
 
-  database:
-    container_name: stac-db
-    image: ghcr.io/stac-utils/pgstac:v0.6.6
-    environment:
-      - POSTGRES_USER=username
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=postgis
-      - PGUSER=username
-      - PGPASSWORD=password
-      - PGHOST=localhost
-      - PGDATABASE=postgis
-    ports:
-      - "5439:5432"
-    command: postgres -N 500
+  # database:
+  #   container_name: stac-db
+  #   image: ghcr.io/stac-utils/pgstac:v0.6.6
+  #   environment:
+  #     - POSTGRES_USER=username
+  #     - POSTGRES_PASSWORD=password
+  #     - POSTGRES_DB=postgis
+  #     - PGUSER=username
+  #     - PGPASSWORD=password
+  #     - PGHOST=localhost
+  #     - PGDATABASE=postgis
+  #   ports:
+  #     - "5439:5432"
+  #   command: postgres -N 500
+
+  # Load joplin demo dataset into the PGStac Application
+  # loadjoplin-pgstac:
+  #   image: stac-utils/stac-fastapi
+  #   environment:
+  #     - ENVIRONMENT=development
+  #   volumes:
+  #     - ./stac_fastapi:/app/stac_fastapi
+  #     - ./scripts:/app/scripts
+  #   command:
+  #     - "./scripts/wait-for-it.sh"
+  #     - "app-pgstac:8082"
+  #     - "--"
+  #     - "python"
+  #     - "/app/scripts/ingest_joplin.py"
+  #     - "http://app-pgstac:8082"
+  #   depends_on:
+  #     - database
+  #     - app-pgstac
 
 networks:
   default:
