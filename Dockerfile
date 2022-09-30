@@ -29,4 +29,5 @@ RUN pip install -e ./stac_fastapi/types[dev] && \
     pip install -e ./stac_fastapi/pgstac[dev,server]
 
 RUN chmod +x ./create_db_script.sh
-CMD /app/create_db_script.sh ; python -m stac_fastapi.pgstac.app
+# CMD /app/create_db_script.sh ; python -m stac_fastapi.pgstac.app
+CMD python -m stac_fastapi.pgstac.app
