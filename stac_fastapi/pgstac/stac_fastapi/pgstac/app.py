@@ -1,6 +1,7 @@
 """FastAPI application using PGStac."""
+import os
 from fastapi.responses import ORJSONResponse
-
+from fastapi import APIRouter
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (
@@ -35,6 +36,9 @@ extensions = [
 
 post_request_model = create_post_request_model(extensions, base_model=PgstacSearch)
 
+# get the base url from environment variable, if not set use /
+base_url = os.getenv("BASE_URL", "")
+
 api = StacApi(
     settings=settings,
     extensions=extensions,
@@ -42,6 +46,7 @@ api = StacApi(
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
+    router = APIRouter(prefix=base_url),
 )
 app = api.app
 
