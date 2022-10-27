@@ -2,7 +2,7 @@ version: '3'
 services:
   app-pgstac:
     container_name: stac-fastapi-pgstac
-    image: stacpdadev.azurecr.io/stac-api-server:dev
+    build: Dockerfile
     platform: linux/amd64
     environment:
       - APP_HOST=0.0.0.0
@@ -22,14 +22,9 @@ services:
       - DB_MIN_CONN_SIZE=1
       - DB_MAX_CONN_SIZE=1
       - USE_API_HYDRATE=${USE_API_HYDRATE:-false}
-      - BASE_URL=/stacserver
+      # - BASE_URL=/stacserver
     ports:
       - "8082:8082"
-    # volumes:
-    #   - ./stac_fastapi:/app/stac_fastapi
-    #   - ./scripts:/app/scripts
-    # command:
-    #   bash -c "./scripts/wait-for-it.sh database:5432 && python -m stac_fastapi.pgstac.app"
 
   database:
     container_name: stac-db
@@ -45,25 +40,6 @@ services:
     ports:
       - "5439:5432"
     command: postgres -N 500
-
-  # Load joplin demo dataset into the PGStac Application
-  loadjoplin-pgstac:
-    image: stac-utils/stac-fastapi
-    environment:
-      - ENVIRONMENT=development
-    volumes:
-      - ./stac_fastapi:/app/stac_fastapi
-      - ./scripts:/app/scripts
-    command:
-      - "./scripts/wait-for-it.sh"
-      - "app-pgstac:8082"
-      - "--"
-      - "python"
-      - "/app/scripts/ingest_joplin.py"
-      - "http://app-pgstac:8082"
-    depends_on:
-      - database
-      - app-pgstac
 networks:
   default:
     name: stac-fastapi-network
