@@ -1,132 +1,30 @@
-<p align="center">
-  <img src="https://github.com/radiantearth/stac-site/raw/master/images/logo/stac-030-long.png" width=400>
-  <p align="center">FastAPI implemention of the STAC API spec.</p>
-</p>
-<p align="center">
-  <a href="https://github.com/stac-utils/stac-fastapi/actions?query=workflow%3Acicd" target="_blank">
-      <img src="https://github.com/stac-utils/stac-fastapi/workflows/stac-fastapi/badge.svg" alt="Test">
-  </a>
-  <a href="https://pypi.org/project/stac-fastapi" target="_blank">
-      <img src="https://img.shields.io/pypi/v/stac-fastapi.api?color=%2334D058&label=pypi%20package" alt="Package version">
-  </a>
-  <a href="https://github.com/stac-utils/stac-fastapi/blob/master/LICENSE" target="_blank">
-      <img src="https://img.shields.io/github/license/stac-utils/stac-fastapi.svg" alt="License">
-  </a>
-</p>
+# STAC API Server
 
----
+Custom fork of stac-fastapi server, with edited Dockerfile and few
+additional features.
 
-**Documentation**: [https://stac-utils.github.io/stac-fastapi/](https://stac-utils.github.io/stac-fastapi/)
+# Deployment
 
-**Source Code**: [https://github.com/stac-utils/stac-fastapi](https://github.com/stac-utils/stac-fastapi)
+## Build Jobs
 
----
+Two build jobs set up, for building both prod and dev docker image
+from Dockerfile_dev and Dockerfile_prod.
 
-Python library for building a STAC compliant FastAPI application.  The project is split up into several namespace
-packages:
+## Environment variables
 
-- **stac_fastapi.api**: An API layer which enforces the [stac-api-spec](https://github.com/radiantearth/stac-api-spec).
-- **stac_fastapi.extensions**: Abstract base classes for [STAC API extensions](https://github.com/radiantearth/stac-api-spec/blob/master/extensions.md) and third-party extensions.
-- **stac_fastapi.types**: Shared types and abstract base classes used by the library.
+| Var name | Used for |
+| --- | --- |
+|APP_HOST| IP To bind the stac-fastapi server to (0.0.0.0) |
+|APP_PORT| Port on which to run the stac-fastapi |
+|POSTGRES_USER| Postgres username|
+|POSTGRES_PASS| Postgres password|
+|POSTGRES_DBNAME| Postgres database name (must have postgis and btree plugin enabled)|
+|POSTGRES_HOST_READER| Hostname of the database for read connections|
+|POSTGRES_HOST_WRITER| Hostname of the database for write connections|
+|POSTGRES_PORT| Postgress port|
 
-#### Backends
-- **stac_fastapi.sqlalchemy**: Postgres backend implementation with sqlalchemy.
-- **stac_fastapi.pgstac**: Postgres backend implementation with [PGStac](https://github.com/stac-utils/pgstac).
+Check out docker-compose.yml for other variables
+## Setting up the database
 
-`stac-fastapi` was initially developed by [arturo-ai](https://github.com/arturo-ai).
+Apply ./scripts/setup_pgstac_schema.sql on your database specified with POSTGRES_DBNAME env var.
 
-## Installation
-
-```bash
-# Install from pypi.org
-pip install stac-fastapi.api stac-fastapi.types stac-fastapi.extensions
-
-# Install a backend of your choice
-pip install stac-fastapi.sqlalchemy
-# or
-pip install stac-fastapi.pgstac
-
-#/////////////////////
-# Install from sources
-
-git clone https://github.com/stac-utils/stac-fastapi.git && cd stac-fastapi
-pip install \
-  -e stac_fastapi/api \
-  -e stac_fastapi/types \
-  -e stac_fastapi/extensions
-
-# Install a backend of your choice
-pip install -e stac_fastapi/sqlalchemy
-# or
-pip install -e stac_fastapi/pgstac
-```
-
-## Local Development
-
-Use docker-compose via make to start the application, migrate the database, and ingest some example data:
-```bash
-make image
-make docker-run-all
-```
-
-- The SQLAlchemy backend app will be available on <http://localhost:8081>.
-- The PGStac backend app will be available on <http://localhost:8082>.
-
-You can also launch only one of the applications with either of these commands:
-
-```shell
-make docker-run-pgstac
-make docker-run-sqlalchemy
-```
-
-The application will be started on <http://localhost:8080>.
-
-By default, the apps are run with uvicorn hot-reloading enabled. This can be turned off by changing the value
-of the `RELOAD` env var in docker-compose.yml to `false`.
-
-#### Note to Docker for Windows users
-
-You'll need to enable experimental features on Docker for Windows in order to run the docker-compose,
-due to the "--platform" flag that is required to allow the project to run on some Apple architectures.
-To do this, open Docker Desktop, go to settings, select "Docker Engine", and modify the configuration
-JSON to have `"experimental": true`.
-
-### Testing
-
-Before running the tests, ensure the database and apps run with docker-compose are down:
-
-```shell
-docker-compose down
-```
-
-The database container provided by the docker-compose stack must be running. This can be started with:
-
-```shell
-make run-database
-```
-
-To run tests for both the pgstac and sqlalchemy backends, execute:
-
-```shell
-make test
-```
-
-To only run pgstac backend tests:
-
-```shell
-make test-pgstac
-```
-
-To only run sqlalchemy backend tests:
-
-```shell
-make test-sqlalchemy
-```
-
-Run individual tests by running pytest within a docker container:
-
-```shell
-make docker-shell-pgstac # or docker-shell-sqlalchemy
-$ pip install -e stac_fastapi/pgstac[dev]
-$ pytest -v stac_fastapi/pgstac/tests/api/test_api.py 
-```
