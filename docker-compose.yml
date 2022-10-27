@@ -2,7 +2,7 @@ version: '3'
 services:
   app-pgstac:
     container_name: stac-fastapi-pgstac
-    build: Dockerfile
+    build: .
     platform: linux/amd64
     environment:
       - APP_HOST=0.0.0.0
