@@ -1,7 +1,10 @@
 """FastAPI application using PGStac."""
+import json
 import os
+
+from fastapi import APIRouter, Response
+from fastapi.responses import JSONResponse
 from fastapi.responses import ORJSONResponse
-from fastapi import APIRouter
 from stac_fastapi.api.app import StacApi
 from stac_fastapi.api.models import create_get_request_model, create_post_request_model
 from stac_fastapi.extensions.core import (
@@ -46,9 +49,11 @@ api = StacApi(
     response_class=ORJSONResponse,
     search_get_request_model=create_get_request_model(extensions),
     search_post_request_model=post_request_model,
-    router = APIRouter(prefix=base_url),
+    router=APIRouter(prefix=base_url),
 )
 app = api.app
+print("App2", app)
+
 
 
 @app.on_event("startup")

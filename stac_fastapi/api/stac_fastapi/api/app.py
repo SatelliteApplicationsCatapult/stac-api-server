@@ -1,4 +1,5 @@
 """fastapi app creation."""
+import json
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import attr
@@ -7,12 +8,6 @@ from fastapi import APIRouter, FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.params import Depends
 from pydantic import BaseModel
-from stac_pydantic import Collection, Item, ItemCollection
-from stac_pydantic.api import ConformanceClasses, LandingPage
-from stac_pydantic.api.collections import Collections
-from stac_pydantic.version import STAC_VERSION
-from starlette.responses import JSONResponse, Response
-
 from stac_fastapi.api.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
 from stac_fastapi.api.models import (
@@ -31,13 +26,48 @@ from stac_fastapi.api.routes import (
     create_async_endpoint,
     create_sync_endpoint,
 )
-
 # TODO: make this module not depend on `stac_fastapi.extensions`
 from stac_fastapi.extensions.core import FieldsExtension, TokenPaginationExtension
 from stac_fastapi.types.config import ApiSettings, Settings
 from stac_fastapi.types.core import AsyncBaseCoreClient, BaseCoreClient
 from stac_fastapi.types.extension import ApiExtension
 from stac_fastapi.types.search import BaseSearchGetRequest, BaseSearchPostRequest
+from stac_pydantic import Collection, Item, ItemCollection
+from stac_pydantic.api import ConformanceClasses, LandingPage
+from stac_pydantic.api.collections import Collections
+from stac_pydantic.version import STAC_VERSION
+from starlette.datastructures import MutableHeaders
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse, Response
+
+
+class EncodingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        new_header = MutableHeaders(request.headers)
+        new_header["Accept-Encoding"] = "utf-8"
+        request.scope.update(headers=new_header.raw)
+        response = await call_next(request)
+        return response
+
+
+class AccessMiddleware(BaseHTTPMiddleware):
+
+    async def dispatch(
+            self,
+            request,
+            handler,
+    ) -> Response:
+        response = await handler(request)
+
+        binary = b''
+        async for data in response.body_iterator:
+            binary += data
+        # try decoding with all encodings and return the first one that works
+        decoded = binary.decode()
+        decoded = json.loads(decoded)
+        decoded["boss"] = "ivica"
+
+        return JSONResponse(content=decoded, status_code=response.status_code)
 
 
 @attr.s
@@ -79,6 +109,7 @@ class StacApi:
         ),
         converter=update_openapi,
     )
+
     router: APIRouter = attr.ib(default=attr.Factory(APIRouter))
     title: str = attr.ib(default="stac-fastapi")
     api_version: str = attr.ib(default="0.1")
@@ -92,9 +123,13 @@ class StacApi:
     )
     pagination_extension = attr.ib(default=TokenPaginationExtension)
     response_class: Type[Response] = attr.ib(default=JSONResponse)
+    basic_middleware = [BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware]
+    use_extra = True
+    if use_extra:
+        basic_middleware = basic_middleware + [EncodingMiddleware, AccessMiddleware]
     middlewares: List = attr.ib(
         default=attr.Factory(
-            lambda: [BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware]
+            lambda: StacApi.basic_middleware
         )
     )
     route_dependencies: List[Tuple[List[Scope], List[Depends]]] = attr.ib(default=[])
@@ -114,10 +149,10 @@ class StacApi:
         return None
 
     def _create_endpoint(
-        self,
-        func: Callable,
-        request_type: Union[Type[APIRequest], Type[BaseModel]],
-        resp_class: Type[Response],
+            self,
+            func: Callable,
+            request_type: Union[Type[APIRequest], Type[BaseModel]],
+            resp_class: Type[Response],
     ) -> Callable:
         """Create a FastAPI endpoint."""
         if isinstance(self.client, AsyncBaseCoreClient):
@@ -352,7 +387,7 @@ class StacApi:
         self.app.include_router(mgmt_router, tags=["Liveliness/Readiness"])
 
     def add_route_dependencies(
-        self, scopes: List[Scope], dependencies=List[Depends]
+            self, scopes: List[Scope], dependencies=List[Depends]
     ) -> None:
         """Add custom dependencies to routes.
 
