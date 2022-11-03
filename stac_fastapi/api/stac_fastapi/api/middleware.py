@@ -1,10 +1,14 @@
 """api middleware."""
+import json
 import re
 import typing
 from http.client import HTTP_PORT, HTTPS_PORT
 from typing import List, Tuple
 
+from starlette.datastructures import MutableHeaders
+from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware as _CORSMiddleware
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 
@@ -16,19 +20,19 @@ class CORSMiddleware(_CORSMiddleware):
     """
 
     def __init__(
-        self,
-        app: ASGIApp,
-        allow_origins: typing.Sequence[str] = ("*",),
-        allow_methods: typing.Sequence[str] = (
-            "OPTIONS",
-            "POST",
-            "GET",
-        ),
-        allow_headers: typing.Sequence[str] = ("Content-Type",),
-        allow_credentials: bool = False,
-        allow_origin_regex: typing.Optional[str] = None,
-        expose_headers: typing.Sequence[str] = (),
-        max_age: int = 600,
+            self,
+            app: ASGIApp,
+            allow_origins: typing.Sequence[str] = ("*",),
+            allow_methods: typing.Sequence[str] = (
+                    "OPTIONS",
+                    "POST",
+                    "GET",
+            ),
+            allow_headers: typing.Sequence[str] = ("Content-Type",),
+            allow_credentials: bool = False,
+            allow_origin_regex: typing.Optional[str] = None,
+            expose_headers: typing.Sequence[str] = (),
+            max_age: int = 600,
     ) -> None:
         """Create CORS middleware."""
         super().__init__(
@@ -65,7 +69,7 @@ class ProxyHeaderMiddleware:
                 port_suffix = ""
                 if port is not None:
                     if (proto == "http" and port != HTTP_PORT) or (
-                        proto == "https" and port != HTTPS_PORT
+                            proto == "https" and port != HTTPS_PORT
                     ):
                         port_suffix = f":{port}"
                 scope["headers"] = self._replace_header_value_by_name(
@@ -115,7 +119,7 @@ class ProxyHeaderMiddleware:
         return (proto, domain, port)
 
     def _get_header_value_by_name(
-        self, scope: Scope, header_name: str, default_value: str = None
+            self, scope: Scope, header_name: str, default_value: str = None
     ) -> str:
         headers = scope["headers"]
         candidates = [
@@ -125,10 +129,56 @@ class ProxyHeaderMiddleware:
 
     @staticmethod
     def _replace_header_value_by_name(
-        scope: Scope, header_name: str, new_value: str
+            scope: Scope, header_name: str, new_value: str
     ) -> List[Tuple[str]]:
         return [
-            (name, value)
-            for name, value in scope["headers"]
-            if name.decode() != header_name
-        ] + [(str.encode(header_name), str.encode(new_value))]
+                   (name, value)
+                   for name, value in scope["headers"]
+                   if name.decode() != header_name
+               ] + [(str.encode(header_name), str.encode(new_value))]
+
+
+class EncodingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        new_header = MutableHeaders(request.headers)
+        new_header["Accept-Encoding"] = "utf-8"
+        request.scope.update(headers=new_header.raw)
+        response = await call_next(request)
+        return response
+
+
+class BlobAccessMiddleware(BaseHTTPMiddleware):
+
+    async def dispatch(
+            self,
+            request,
+            handler,
+    ) -> Response:
+        response = await handler(request)
+        # if response code is in 300 to 399 range, then it is a redirect, bypass it
+        if 300 <= response.status_code < 400:
+            return response
+
+        binary = b''
+        async for data in response.body_iterator:
+            binary += data
+        # try decoding with all encodings and return the first one that works
+        decoded = binary.decode()
+        decoded = json.loads(decoded)
+
+        try:
+            for item in decoded['features']:
+                for asset in item['assets'].values():
+                    asset['href'] = ""
+        except KeyError:
+            pass
+
+        try:
+            asset_values = decoded['assets'].values()
+            # replace all hrefs with the same value
+            for asset in asset_values:
+                asset['href'] = ""
+        except KeyError:
+            pass
+
+        return JSONResponse(content=decoded, status_code=response.status_code)
