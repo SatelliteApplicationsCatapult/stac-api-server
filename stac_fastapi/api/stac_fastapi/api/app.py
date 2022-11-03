@@ -1,5 +1,5 @@
 """fastapi app creation."""
-import json
+import os
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import attr
@@ -9,7 +9,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.params import Depends
 from pydantic import BaseModel
 from stac_fastapi.api.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware, EncodingMiddleware,BlobAccessMiddleware
+from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware, EncodingMiddleware, BlobAccessMiddleware
 from stac_fastapi.api.models import (
     APIRequest,
     CollectionUri,
@@ -38,6 +38,7 @@ from stac_pydantic.api.collections import Collections
 from stac_pydantic.version import STAC_VERSION
 from starlette.responses import JSONResponse, Response
 
+AZURE_SIGN_BLOBS = os.getenv("AZURE_SIGN_BLOBS", "false")
 
 
 @attr.s
@@ -94,9 +95,8 @@ class StacApi:
     pagination_extension = attr.ib(default=TokenPaginationExtension)
     response_class: Type[Response] = attr.ib(default=JSONResponse)
     basic_middleware = [BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware]
-    use_extra = True
-    if use_extra:
-        basic_middleware = basic_middleware + [ EncodingMiddleware,BlobAccessMiddleware]
+    if AZURE_SIGN_BLOBS.lower() == "true":
+        basic_middleware = basic_middleware + [EncodingMiddleware, BlobAccessMiddleware]
     middlewares: List = attr.ib(
         default=attr.Factory(
             lambda: StacApi.basic_middleware

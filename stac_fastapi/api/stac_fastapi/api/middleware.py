@@ -11,6 +11,8 @@ from starlette.middleware.cors import CORSMiddleware as _CORSMiddleware
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from .azure import get_read_sas_token
+
 
 class CORSMiddleware(_CORSMiddleware):
     """
@@ -169,7 +171,7 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
         try:
             for item in decoded['features']:
                 for asset in item['assets'].values():
-                    asset['href'] = ""
+                    _, asset['href'] = get_read_sas_token(asset['href'])
         except KeyError:
             pass
 
@@ -177,7 +179,7 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             asset_values = decoded['assets'].values()
             # replace all hrefs with the same value
             for asset in asset_values:
-                asset['href'] = ""
+                _, asset['href'] = get_read_sas_token(asset['href'])
         except KeyError:
             pass
 

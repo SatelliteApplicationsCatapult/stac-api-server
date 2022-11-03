@@ -52,7 +52,6 @@ api = StacApi(
     router=APIRouter(prefix=base_url),
 )
 app = api.app
-print("App2", app)
 
 
 
