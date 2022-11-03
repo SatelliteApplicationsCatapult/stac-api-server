@@ -1,4 +1,5 @@
 """fastapi app creation."""
+import os
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import attr
@@ -7,14 +8,8 @@ from fastapi import APIRouter, FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.params import Depends
 from pydantic import BaseModel
-from stac_pydantic import Collection, Item, ItemCollection
-from stac_pydantic.api import ConformanceClasses, LandingPage
-from stac_pydantic.api.collections import Collections
-from stac_pydantic.version import STAC_VERSION
-from starlette.responses import JSONResponse, Response
-
 from stac_fastapi.api.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware
+from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware, EncodingMiddleware, BlobAccessMiddleware
 from stac_fastapi.api.models import (
     APIRequest,
     CollectionUri,
@@ -31,13 +26,19 @@ from stac_fastapi.api.routes import (
     create_async_endpoint,
     create_sync_endpoint,
 )
-
 # TODO: make this module not depend on `stac_fastapi.extensions`
 from stac_fastapi.extensions.core import FieldsExtension, TokenPaginationExtension
 from stac_fastapi.types.config import ApiSettings, Settings
 from stac_fastapi.types.core import AsyncBaseCoreClient, BaseCoreClient
 from stac_fastapi.types.extension import ApiExtension
 from stac_fastapi.types.search import BaseSearchGetRequest, BaseSearchPostRequest
+from stac_pydantic import Collection, Item, ItemCollection
+from stac_pydantic.api import ConformanceClasses, LandingPage
+from stac_pydantic.api.collections import Collections
+from stac_pydantic.version import STAC_VERSION
+from starlette.responses import JSONResponse, Response
+
+AZURE_SIGN_BLOBS = os.getenv("AZURE_SIGN_BLOBS", "false")
 
 
 @attr.s
@@ -79,6 +80,7 @@ class StacApi:
         ),
         converter=update_openapi,
     )
+
     router: APIRouter = attr.ib(default=attr.Factory(APIRouter))
     title: str = attr.ib(default="stac-fastapi")
     api_version: str = attr.ib(default="0.1")
@@ -92,9 +94,12 @@ class StacApi:
     )
     pagination_extension = attr.ib(default=TokenPaginationExtension)
     response_class: Type[Response] = attr.ib(default=JSONResponse)
+    basic_middleware = [BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware]
+    if AZURE_SIGN_BLOBS.lower() == "true":
+        basic_middleware = basic_middleware + [EncodingMiddleware, BlobAccessMiddleware]
     middlewares: List = attr.ib(
         default=attr.Factory(
-            lambda: [BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware]
+            lambda: StacApi.basic_middleware
         )
     )
     route_dependencies: List[Tuple[List[Scope], List[Depends]]] = attr.ib(default=[])
@@ -114,10 +119,10 @@ class StacApi:
         return None
 
     def _create_endpoint(
-        self,
-        func: Callable,
-        request_type: Union[Type[APIRequest], Type[BaseModel]],
-        resp_class: Type[Response],
+            self,
+            func: Callable,
+            request_type: Union[Type[APIRequest], Type[BaseModel]],
+            resp_class: Type[Response],
     ) -> Callable:
         """Create a FastAPI endpoint."""
         if isinstance(self.client, AsyncBaseCoreClient):
@@ -352,7 +357,7 @@ class StacApi:
         self.app.include_router(mgmt_router, tags=["Liveliness/Readiness"])
 
     def add_route_dependencies(
-        self, scopes: List[Scope], dependencies=List[Depends]
+            self, scopes: List[Scope], dependencies=List[Depends]
     ) -> None:
         """Add custom dependencies to routes.
 

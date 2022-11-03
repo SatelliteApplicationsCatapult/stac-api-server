@@ -11,6 +11,9 @@ install_requires = [
     "stac_pydantic==2.0.*",
     "brotli_asgi",
     "stac-fastapi.types",
+    "pygeoif==0.7",
+    "azure-core==1.25.1",
+    "azure-storage-blob==12.13.1"
 ]
 
 extra_reqs = {
