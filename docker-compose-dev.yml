@@ -23,7 +23,7 @@ services:
       - DB_MIN_CONN_SIZE=1
       - DB_MAX_CONN_SIZE=1
       - USE_API_HYDRATE=${USE_API_HYDRATE:-false}
-      - AZURE_SIGN_BLOBS=true
+      - AZURE_SIGN_BLOBS=false # change to true for appending sas read keys and put connection string below
       - AZURE_STORAGE_CONNECTION_STRING=
       - AZURE_STORAGE_BLOB_NAME_FOR_STAC_ITEMS=stac-items
     ports:
