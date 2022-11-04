@@ -7,11 +7,15 @@ from brotli_asgi import BrotliMiddleware
 from fastapi import APIRouter, FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.params import Depends
-from pydantic import BaseModel
+from stac_pydantic import Collection, Item, ItemCollection
+from stac_pydantic.api import ConformanceClasses, LandingPage
+from stac_pydantic.api.collections import Collections
+from stac_pydantic.version import STAC_VERSION
+from starlette.responses import JSONResponse, Response
+
 from stac_fastapi.api.errors import DEFAULT_STATUS_CODES, add_exception_handlers
 from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware, EncodingMiddleware, BlobAccessMiddleware
 from stac_fastapi.api.models import (
-    APIRequest,
     CollectionUri,
     EmptyRequest,
     GeoJSONResponse,
@@ -24,7 +28,6 @@ from stac_fastapi.api.routes import (
     Scope,
     add_route_dependencies,
     create_async_endpoint,
-    create_sync_endpoint,
 )
 # TODO: make this module not depend on `stac_fastapi.extensions`
 from stac_fastapi.extensions.core import FieldsExtension, TokenPaginationExtension
@@ -118,19 +121,6 @@ class StacApi:
                 return ext
         return None
 
-    def _create_endpoint(
-            self,
-            func: Callable,
-            request_type: Union[Type[APIRequest], Type[BaseModel]],
-            resp_class: Type[Response],
-    ) -> Callable:
-        """Create a FastAPI endpoint."""
-        if isinstance(self.client, AsyncBaseCoreClient):
-            return create_async_endpoint(func, request_type, response_class=resp_class)
-        elif isinstance(self.client, BaseCoreClient):
-            return create_sync_endpoint(func, request_type, response_class=resp_class)
-        raise NotImplementedError
-
     def register_landing_page(self):
         """Register landing page (GET /).
 
@@ -147,7 +137,7 @@ class StacApi:
             response_model_exclude_unset=False,
             response_model_exclude_none=True,
             methods=["GET"],
-            endpoint=self._create_endpoint(
+            endpoint=create_async_endpoint(
                 self.client.landing_page, EmptyRequest, self.response_class
             ),
         )
@@ -168,7 +158,7 @@ class StacApi:
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
             methods=["GET"],
-            endpoint=self._create_endpoint(
+            endpoint=create_async_endpoint(
                 self.client.conformance, EmptyRequest, self.response_class
             ),
         )
@@ -187,7 +177,7 @@ class StacApi:
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
             methods=["GET"],
-            endpoint=self._create_endpoint(
+            endpoint=create_async_endpoint(
                 self.client.get_item, ItemUri, self.response_class
             ),
         )
@@ -209,7 +199,7 @@ class StacApi:
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
             methods=["POST"],
-            endpoint=self._create_endpoint(
+            endpoint=create_async_endpoint(
                 self.client.post_search, self.search_post_request_model, GeoJSONResponse
             ),
         )
@@ -231,7 +221,7 @@ class StacApi:
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
             methods=["GET"],
-            endpoint=self._create_endpoint(
+            endpoint=create_async_endpoint(
                 self.client.get_search, self.search_get_request_model, GeoJSONResponse
             ),
         )
@@ -252,7 +242,7 @@ class StacApi:
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
             methods=["GET"],
-            endpoint=self._create_endpoint(
+            endpoint=create_async_endpoint(
                 self.client.all_collections, EmptyRequest, self.response_class
             ),
         )
@@ -271,7 +261,7 @@ class StacApi:
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
             methods=["GET"],
-            endpoint=self._create_endpoint(
+            endpoint=create_async_endpoint(
                 self.client.get_collection, CollectionUri, self.response_class
             ),
         )
@@ -302,7 +292,7 @@ class StacApi:
             response_model_exclude_unset=True,
             response_model_exclude_none=True,
             methods=["GET"],
-            endpoint=self._create_endpoint(
+            endpoint=create_async_endpoint(
                 self.client.item_collection, request_model, self.response_class
             ),
         )
@@ -339,7 +329,11 @@ class StacApi:
             return self.app.openapi_schema
 
         openapi_schema = get_openapi(
-            title=self.title, version=self.api_version, routes=self.app.routes
+            title=self.title,
+            version=self.api_version,
+            description=self.description,
+            routes=self.app.routes,
+            servers=self.app.servers,
         )
 
         self.app.openapi_schema = openapi_schema
