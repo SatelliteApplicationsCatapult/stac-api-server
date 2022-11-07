@@ -1,10 +1,13 @@
 """api middleware."""
+import datetime
 import json
 import re
 import typing
+from datetime import timedelta
 from http.client import HTTP_PORT, HTTPS_PORT
 from typing import List, Tuple
 
+import requests
 from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware as _CORSMiddleware
@@ -12,6 +15,10 @@ from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .azure import get_read_sas_token
+
+tokens = {}
+tokens_expiry_timestamps = {}
+collections_from_mpc = {}
 
 
 class CORSMiddleware(_CORSMiddleware):
@@ -172,6 +179,7 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             for item in decoded['features']:
                 for asset in item['assets'].values():
                     _, asset['href'] = get_read_sas_token(asset['href'])
+            return JSONResponse(content=decoded, status_code=response.status_code)
         except KeyError:
             pass
 
@@ -180,7 +188,111 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             # replace all hrefs with the same value
             for asset in asset_values:
                 _, asset['href'] = get_read_sas_token(asset['href'])
+            return JSONResponse(content=decoded, status_code=response.status_code)
         except KeyError:
             pass
+
+        return JSONResponse(content=decoded, status_code=response.status_code)
+
+
+class MicrosoftPlanetaryComputerMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+            self,
+            request,
+            handler,
+    ) -> Response:
+        response = await handler(request)
+        # if response code is in 300 to 399 range, then it is a redirect, bypass it
+        if 300 <= response.status_code < 400:
+            return response
+        binary = b''
+        async for data in response.body_iterator:
+            binary += data
+        # try decoding with all encodings and return the first one that works
+        decoded = binary.decode()
+        decoded = json.loads(decoded)
+
+        def is_collection_from_mpc(a):
+            if a in collections_from_mpc:
+                return collections_from_mpc[a]
+            else:
+                url = f'https://planetarycomputer.microsoft.com/api/stac/v1/collections/{a}'
+                print("checking if collection is from mpc", url)
+                try:
+                    r = requests.get(url)
+                    collections_from_mpc[a] = r.status_code == 200
+                    print("Collections is from mpc")
+                    if a not in tokens:
+                        print("a is not in tokens")
+                        tokens[a] = get_sas_token_from_microsoft(a)
+                        print("Got token for", a)
+                    return collections_from_mpc[a]
+                except:
+                    collections_from_mpc[a] = False
+                    return False
+
+        def get_sas_token_from_microsoft(a):
+            if a in tokens:
+                print("Giving token from cache")
+                token_expiry_time = tokens_expiry_timestamps[a]
+                token_expiry_time = datetime.datetime.strptime(token_expiry_time, "%Y-%m-%dT%H:%M:%SZ")
+                print("Token expiry time", token_expiry_time)
+                print("Current time", datetime.datetime.now())
+
+                if token_expiry_time - datetime.datetime.now() < timedelta(minutes=20):
+                    print("Token expired, getting a new one")
+                    del tokens[a]
+                    del tokens_expiry_timestamps[a]
+                    return get_sas_token_from_microsoft(a)
+                return tokens[a]
+            else:
+                try:
+                    print("Getting token from mpc")
+                    url = f"https://planetarycomputer.microsoft.com/api/sas/v1/token/{a}"
+                    print("Token obtaining url is:", url)
+                    rsp = requests.get(url)
+                    token = rsp.json()['token']
+                    expiry_time = rsp.json()['msft:expiry']
+                    tokens[a] = token
+                    tokens_expiry_timestamps[a] = expiry_time
+                    return token
+                except:
+                    tokens[a] = None
+                    print("Could not get token from mpc")
+
+        def tokenify(stac_body):
+            av = stac_body['assets'].values()
+            print("Finding collection id")
+            collection_id = [link['href'] for link in stac_body['links'] if link['rel'] == 'collection'][0].split('/')[
+                -1]
+            print("Collection id is", collection_id)
+            if is_collection_from_mpc(collection_id):
+                print("Collection is from MPC")
+                token = get_sas_token_from_microsoft(collection_id)
+
+                for a in av:
+                    asset_href = a['href']
+                    # if asset_href does not have a token, add it
+                    if '?' not in asset_href and token is not None:
+                        a['href'] = f"{asset_href}?{token}"
+            return av
+
+        try:
+            for item in decoded['features']:
+                tokenify(item)
+            return JSONResponse(content=decoded, status_code=response.status_code)
+        except KeyError:
+            print("Not list of items view")
+        except Exception as e:
+            print("Error", e)
+
+        try:
+            # find the collection id from the links where rel is collection
+            tokenify(decoded)
+            return JSONResponse(content=decoded, status_code=response.status_code)
+        except KeyError:
+            print("Not single item view")
+        except Exception as e:
+            print("Error", e)
 
         return JSONResponse(content=decoded, status_code=response.status_code)
