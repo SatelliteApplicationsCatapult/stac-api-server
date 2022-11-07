@@ -172,7 +172,7 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             return response
         if not list(set(request.url.path.split("/")).intersection(set(intercept_paths))):
             return response
-
+        original_response_type = response.headers.get("Content-Type")
         binary = b''
         async for data in response.body_iterator:
             binary += data
@@ -184,7 +184,7 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             for item in decoded['features']:
                 for asset in item['assets'].values():
                     _, asset['href'] = get_read_sas_token(asset['href'])
-            return JSONResponse(content=decoded, status_code=response.status_code)
+            return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
         except KeyError:
             pass
 
@@ -193,11 +193,11 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             # replace all hrefs with the same value
             for asset in asset_values:
                 _, asset['href'] = get_read_sas_token(asset['href'])
-            return JSONResponse(content=decoded, status_code=response.status_code)
+            return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
         except KeyError:
             pass
 
-        return JSONResponse(content=decoded, status_code=response.status_code)
+        return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
 
 
 class MicrosoftPlanetaryComputerMiddleware(BaseHTTPMiddleware):
@@ -216,7 +216,7 @@ class MicrosoftPlanetaryComputerMiddleware(BaseHTTPMiddleware):
         if not list(set(request.url.path.split("/")).intersection(set(intercept_paths))):
             return response
         # if response code is in 300 to 399 range, then it is a redirect, bypass it
-
+        original_response_type = response.headers.get("Content-Type")
         binary = b''
         async for data in response.body_iterator:
             binary += data
@@ -276,7 +276,7 @@ class MicrosoftPlanetaryComputerMiddleware(BaseHTTPMiddleware):
         try:
             for item in decoded['features']:
                 tokenify(item)
-            return JSONResponse(content=decoded, status_code=response.status_code)
+            return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
         except KeyError:
             pass
         except Exception as e:
@@ -284,9 +284,9 @@ class MicrosoftPlanetaryComputerMiddleware(BaseHTTPMiddleware):
         try:
             # find the collection id from the links where rel is collection
             tokenify(decoded)
-            return JSONResponse(content=decoded, status_code=response.status_code)
+            return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
         except KeyError:
             pass
         except Exception as e:
             pass
-        return JSONResponse(content=decoded, status_code=response.status_code)
+        return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
