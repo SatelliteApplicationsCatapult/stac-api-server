@@ -20,7 +20,7 @@ services:
       - POSTGRES_PORT=5432
       - WEB_CONCURRENCY=10
       - AZURE_SIGN_BLOBS=true # change to true for appending sas read keys and put connection string below
-      - AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=ctpltstacstrgprod;AccountKey=YpjP8TbDqD5S+qT/qUAX+fPFmiZQnGPRH+psWgetJdYXvbK5tqviJP2xk6ZErDym5bVAiv2Kd7Sv+AStqiYJ9Q==;EndpointSuffix=core.windows.net
+      - AZURE_STORAGE_CONNECTION_STRING=
       - AZURE_STORAGE_BLOB_NAME_FOR_STAC_ITEMS=stac-items
       - ADD_MPC_SAS_TOKENS=true
     ports:
