@@ -26,6 +26,7 @@ services:
       - AZURE_SIGN_BLOBS=false # change to true for appending sas read keys and put connection string below
       - AZURE_STORAGE_CONNECTION_STRING=
       - AZURE_STORAGE_BLOB_NAME_FOR_STAC_ITEMS=stac-items
+      - ADD_MPC_SAS_TOKENS=true
     ports:
       - "8082:8082"
     volumes:
