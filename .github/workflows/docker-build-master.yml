@@ -15,7 +15,6 @@ jobs:
 
     services:
       db_service:
-        image: ghcr.io/stac-utils/pgstac:v0.6.10
         image: bitner/pgstac:0.2.7
         env:
           POSTGRES_USER: username
@@ -44,8 +43,8 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Lint code
-        uses: pre-commit/action@v2.0.0
+      # - name: Lint code
+      #   uses: pre-commit/action@v2.0.0
 
       - name: Install pipenv
         run: |
