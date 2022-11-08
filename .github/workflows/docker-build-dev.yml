@@ -15,7 +15,7 @@ jobs:
 
     services:
       db_service:
-        image: ghcr.io/stac-utils/pgstac:v0.6.10
+        image: bitner/pgstac:0.2.7
         env:
           POSTGRES_USER: username
           POSTGRES_PASSWORD: password
