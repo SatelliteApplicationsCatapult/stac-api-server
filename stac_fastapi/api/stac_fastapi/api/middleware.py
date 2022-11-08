@@ -1,10 +1,12 @@
 """api middleware."""
+import datetime
 import json
 import re
 import typing
 from http.client import HTTP_PORT, HTTPS_PORT
 from typing import List, Tuple
 
+import requests
 from starlette.datastructures import MutableHeaders
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.cors import CORSMiddleware as _CORSMiddleware
@@ -12,6 +14,20 @@ from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .azure import get_read_sas_token
+import logging
+logger = logging.getLogger("uvicorn")
+
+
+class Token:
+    def __init__(self):
+        pass
+
+    token: str = ""
+    token_expire: datetime.datetime = None
+    collection = None
+
+
+token_store = {}
 
 
 class CORSMiddleware(_CORSMiddleware):
@@ -157,10 +173,15 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             handler,
     ) -> Response:
         response = await handler(request)
-        # if response code is in 300 to 399 range, then it is a redirect, bypass it
+        intercept_paths = [
+            "search",
+            "items",
+        ]
         if 300 <= response.status_code < 400:
             return response
-
+        if not list(set(request.url.path.split("/")).intersection(set(intercept_paths))):
+            return response
+        original_response_type = response.headers.get("Content-Type")
         binary = b''
         async for data in response.body_iterator:
             binary += data
@@ -172,6 +193,7 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             for item in decoded['features']:
                 for asset in item['assets'].values():
                     _, asset['href'] = get_read_sas_token(asset['href'])
+            return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
         except KeyError:
             pass
 
@@ -180,7 +202,99 @@ class BlobAccessMiddleware(BaseHTTPMiddleware):
             # replace all hrefs with the same value
             for asset in asset_values:
                 _, asset['href'] = get_read_sas_token(asset['href'])
+            return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
         except KeyError:
             pass
 
-        return JSONResponse(content=decoded, status_code=response.status_code)
+        return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
+
+
+class MicrosoftPlanetaryComputerMiddleware(BaseHTTPMiddleware):
+    async def dispatch(
+            self,
+            request,
+            handler,
+    ) -> Response:
+        response = await handler(request)
+        intercept_paths = [
+            "search",
+            "items",
+        ]
+        if 300 <= response.status_code < 400:
+            return response
+        if not list(set(request.url.path.split("/")).intersection(set(intercept_paths))):
+            return response
+        # if response code is in 300 to 399 range, then it is a redirect, bypass it
+        original_response_type = response.headers.get("Content-Type")
+        binary = b''
+        async for data in response.body_iterator:
+            binary += data
+        # try decoding with all encodings and return the first one that works
+        decoded = binary.decode()
+        decoded = json.loads(decoded)
+
+        def get_token_from_microsoft_blob(collection_name, storage_account, blob_name):
+            url = f'https://planetarycomputer.microsoft.com/api/sas/v1/token/{storage_account}/{blob_name}'
+            try:
+                r = requests.get(url)
+                a: Token = Token()
+                a.token = r.json()['token']
+                a.collection_name = collection_name
+                a.token_expire = datetime.datetime.strptime(r.json()['msft:expiry'], '%Y-%m-%dT%H:%M:%SZ')
+                token_store[collection_name] = a
+                return a
+            except:
+                logging.info(f"This collection {collection_name} is not available on Microsoft Planetary Computer")
+                token_store[collection_name] = None
+                return None
+
+        def get_token(collection_name, storage_account, blob_name):
+            if collection_name in token_store:
+                token = token_store[collection_name]
+                if token is None:
+                    logging.info("Token for this blob does not exist")
+                    return None
+                if token.token_expire - datetime.datetime.now() < datetime.timedelta(minutes=10):
+                    logging.info("Refreshing token")
+                    return get_token_from_microsoft_blob(collection_name, storage_account, blob_name)
+                else:
+                    logging.info("Using cached token")
+                    return token
+            else:
+                logging.info("Getting token for the first time")
+                return get_token_from_microsoft_blob(collection_name, storage_account, blob_name)
+
+        def tokenify(stac_body):
+            av = stac_body['assets'].values()
+            collection_id = [link['href'] for link in stac_body['links'] if link['rel'] == 'collection'][0].split('/')[
+                -1]
+            for a in av:
+                asset_href = a['href']
+                try:
+                    storage_account_name = asset_href.split('https://')[1].split('.blob.core.windows.net/')[0]
+                    blob_name = asset_href.split('.blob.core.windows.net/')[1].split('/')[0]
+                    token = get_token(collection_id, storage_account_name, blob_name)
+                    if token is not None:
+                        a['href'] = f'{asset_href}?{token.token}'
+                except (IndexError, KeyError):
+                    pass
+
+            return av
+
+        try:
+            for item in decoded['features']:
+                tokenify(item)
+            return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
+        except KeyError:
+            pass
+        except Exception as e:
+            pass
+        try:
+            # find the collection id from the links where rel is collection
+            tokenify(decoded)
+            return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)
+        except KeyError:
+            pass
+        except Exception as e:
+            pass
+        return JSONResponse(content=decoded, status_code=response.status_code, media_type=original_response_type)

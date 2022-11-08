@@ -43,7 +43,7 @@
   ],
   "assets": {
     "red": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_B2.TIF",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_B2.TIF",
       "type": "image/tiff; application=geotiff; profile=cloud-optimized",
       "roles": ["data"],
       "title": "Red Band (B2)",
@@ -69,7 +69,7 @@
       ]
     },
     "green": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_B1.TIF",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_B1.TIF",
       "type": "image/tiff; application=geotiff; profile=cloud-optimized",
       "roles": ["data"],
       "title": "Green Band (B1)",
@@ -95,7 +95,7 @@
       ]
     },
     "nir08": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_B3.TIF",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_B3.TIF",
       "type": "image/tiff; application=geotiff; profile=cloud-optimized",
       "roles": ["data"],
       "title": "Near Infrared Band 0.8 (B3)",
@@ -121,7 +121,7 @@
       ]
     },
     "nir09": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_B4.TIF",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_B4.TIF",
       "type": "image/tiff; application=geotiff; profile=cloud-optimized",
       "roles": ["data"],
       "title": "Near Infrared Band 0.9 (B4)",
@@ -147,28 +147,28 @@
       ]
     },
     "mtl.txt": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_MTL.txt",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_MTL.txt",
       "type": "text/plain",
       "roles": ["metadata"],
       "title": "Product Metadata File (txt)",
       "description": "Collection 2 Level-1 Product Metadata File (txt)"
     },
     "mtl.xml": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_MTL.xml",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_MTL.xml",
       "type": "application/xml",
       "roles": ["metadata"],
       "title": "Product Metadata File (xml)",
       "description": "Collection 2 Level-1 Product Metadata File (xml)"
     },
     "mtl.json": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_MTL.json",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_MTL.json",
       "type": "application/json",
       "roles": ["metadata"],
       "title": "Product Metadata File (json)",
       "description": "Collection 2 Level-1 Product Metadata File (json)"
     },
     "qa_pixel": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_QA_PIXEL.TIF",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_QA_PIXEL.TIF",
       "type": "image/tiff; application=geotiff; profile=cloud-optimized",
       "roles": ["cloud"],
       "title": "Pixel Quality Assessment Band (QA_PIXEL)",
@@ -183,7 +183,7 @@
       ]
     },
     "qa_radsat": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_QA_RADSAT.TIF",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_QA_RADSAT.TIF",
       "type": "image/tiff; application=geotiff; profile=cloud-optimized",
       "roles": ["saturation"],
       "title": "Radiometric Saturation and Dropped Pixel Quality Assessment Band (QA_RADSAT)",
@@ -197,13 +197,13 @@
       ]
     },
     "thumbnail": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_thumb_small.jpeg",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_thumb_small.jpeg",
       "type": "image/jpeg",
       "roles": ["thumbnail"],
       "title": "Thumbnail image"
     },
     "reduced_resolution_browse": {
-      "href": "https://landsateuwest.blob.core.windows.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_thumb_large.jpeg",
+      "href": "https://testblobaaa.net/landsat-c2/level-1/standard/mss/1990/018/038/LM05_L1GS_018038_19901223_20200827_02_T2/LM05_L1GS_018038_19901223_20200827_02_T2_thumb_large.jpeg",
       "type": "image/jpeg",
       "roles": ["overview"],
       "title": "Reduced resolution browse image"
