@@ -1,20 +1,17 @@
 """fastapi app creation."""
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import attr
 from brotli_asgi import BrotliMiddleware
 from fastapi import APIRouter, FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.params import Depends
-from stac_pydantic import Collection, Item, ItemCollection
-from stac_pydantic.api import ConformanceClasses, LandingPage
 from stac_pydantic.api.collections import Collections
 from stac_pydantic.version import STAC_VERSION
-from starlette.responses import JSONResponse, Response
 
 from stac_fastapi.api.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware, EncodingMiddleware, BlobAccessMiddleware
+from stac_fastapi.api.middleware import CORSMiddleware, ProxyHeaderMiddleware, EncodingMiddleware, BlobAccessMiddleware, MicrosoftPlanetaryComputerMiddleware
 from stac_fastapi.api.models import (
     CollectionUri,
     EmptyRequest,
@@ -42,6 +39,7 @@ from stac_pydantic.version import STAC_VERSION
 from starlette.responses import JSONResponse, Response
 
 AZURE_SIGN_BLOBS = os.getenv("AZURE_SIGN_BLOBS", "false")
+ADD_MPC_SAS_TOKENS = os.getenv("ADD_MPC_SAS_TOKENS", "false")
 
 
 @attr.s
@@ -97,9 +95,11 @@ class StacApi:
     )
     pagination_extension = attr.ib(default=TokenPaginationExtension)
     response_class: Type[Response] = attr.ib(default=JSONResponse)
-    basic_middleware = [BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware]
+    basic_middleware = [BrotliMiddleware, CORSMiddleware, ProxyHeaderMiddleware, EncodingMiddleware]
     if AZURE_SIGN_BLOBS.lower() == "true":
-        basic_middleware = basic_middleware + [EncodingMiddleware, BlobAccessMiddleware]
+        basic_middleware = basic_middleware + [BlobAccessMiddleware]
+    if ADD_MPC_SAS_TOKENS.lower() == "true":
+        basic_middleware = basic_middleware + [MicrosoftPlanetaryComputerMiddleware]
     middlewares: List = attr.ib(
         default=attr.Factory(
             lambda: StacApi.basic_middleware
