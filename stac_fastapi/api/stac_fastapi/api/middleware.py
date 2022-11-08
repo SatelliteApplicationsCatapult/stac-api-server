@@ -3,7 +3,6 @@ import datetime
 import json
 import re
 import typing
-from datetime import timedelta
 from http.client import HTTP_PORT, HTTPS_PORT
 from typing import List, Tuple
 
@@ -15,10 +14,20 @@ from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .azure import get_read_sas_token
+import logging
+logger = logging.getLogger("uvicorn")
 
-tokens = {}
-tokens_expiry_timestamps = {}
-collections_from_mpc = {}
+
+class Token:
+    def __init__(self):
+        pass
+
+    token: str = ""
+    token_expire: datetime.datetime = None
+    collection = None
+
+
+token_store = {}
 
 
 class CORSMiddleware(_CORSMiddleware):
@@ -224,53 +233,52 @@ class MicrosoftPlanetaryComputerMiddleware(BaseHTTPMiddleware):
         decoded = binary.decode()
         decoded = json.loads(decoded)
 
-        def is_collection_from_mpc(a):
-            if a in collections_from_mpc:
-                return collections_from_mpc[a]
-            else:
-                url = f'https://planetarycomputer.microsoft.com/api/stac/v1/collections/{a}'
-                try:
-                    r = requests.get(url)
-                    collections_from_mpc[a] = r.status_code == 200
-                    if a not in tokens:
-                        tokens[a] = get_sas_token_from_microsoft(a)
-                    return collections_from_mpc[a]
-                except:
-                    collections_from_mpc[a] = False
-                    return False
+        def get_token_from_microsoft_blob(collection_name, storage_account, blob_name):
+            url = f'https://planetarycomputer.microsoft.com/api/sas/v1/token/{storage_account}/{blob_name}'
+            try:
+                r = requests.get(url)
+                a: Token = Token()
+                a.token = r.json()['token']
+                a.collection_name = collection_name
+                a.token_expire = datetime.datetime.strptime(r.json()['msft:expiry'], '%Y-%m-%dT%H:%M:%SZ')
+                token_store[collection_name] = a
+                return a
+            except:
+                logging.info(f"This collection {collection_name} is not available on Microsoft Planetary Computer")
+                token_store[collection_name] = None
+                return None
 
-        def get_sas_token_from_microsoft(a):
-            if a in tokens:
-                token_expiry_time = tokens_expiry_timestamps[a]
-                token_expiry_time = datetime.datetime.strptime(token_expiry_time, "%Y-%m-%dT%H:%M:%SZ")
-                if token_expiry_time - datetime.datetime.now() < timedelta(minutes=20):
-                    del tokens[a]
-                    del tokens_expiry_timestamps[a]
-                    return get_sas_token_from_microsoft(a)
-                return tokens[a]
-            else:
-                try:
-                    url = f"https://planetarycomputer.microsoft.com/api/sas/v1/token/{a}"
-                    rsp = requests.get(url)
-                    token = rsp.json()['token']
-                    expiry_time = rsp.json()['msft:expiry']
-                    tokens[a] = token
-                    tokens_expiry_timestamps[a] = expiry_time
+        def get_token(collection_name, storage_account, blob_name):
+            if collection_name in token_store:
+                token = token_store[collection_name]
+                if token is None:
+                    logging.info("Token for this blob does not exist")
+                    return None
+                if token.token_expire - datetime.datetime.now() < datetime.timedelta(minutes=10):
+                    logging.info("Refreshing token")
+                    return get_token_from_microsoft_blob(collection_name, storage_account, blob_name)
+                else:
+                    logging.info("Using cached token")
                     return token
-                except:
-                    tokens[a] = None
+            else:
+                logging.info("Getting token for the first time")
+                return get_token_from_microsoft_blob(collection_name, storage_account, blob_name)
 
         def tokenify(stac_body):
             av = stac_body['assets'].values()
             collection_id = [link['href'] for link in stac_body['links'] if link['rel'] == 'collection'][0].split('/')[
                 -1]
-            if is_collection_from_mpc(collection_id):
-                token = get_sas_token_from_microsoft(collection_id)
-                for a in av:
-                    asset_href = a['href']
-                    # if asset_href does not have a token, add it
-                    if '?' not in asset_href and token is not None:
-                        a['href'] = f"{asset_href}?{token}"
+            for a in av:
+                asset_href = a['href']
+                try:
+                    storage_account_name = asset_href.split('https://')[1].split('.blob.core.windows.net/')[0]
+                    blob_name = asset_href.split('.blob.core.windows.net/')[1].split('/')[0]
+                    token = get_token(collection_id, storage_account_name, blob_name)
+                    if token is not None:
+                        a['href'] = f'{asset_href}?{token.token}'
+                except (IndexError, KeyError):
+                    pass
+
             return av
 
         try:
